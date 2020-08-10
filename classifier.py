@@ -178,7 +178,7 @@ for x in duplicates.keys():
 			yesno[x][1] = 'y'
 	duplicates[x] = [lis[1] for lis in duplicates[x]] 
 
-temp = [["Incident ID", "Filter", "Match Found", "Duplicate Match Found", "Mapped System", "Found System", "Duplicates"]]
+temp = [["Incident ID", "Filter", "Has SRT", "Match Found", "Duplicate Match Found", "Mapped System", "Found System", "Duplicates"]]
 num = 0
 numo = 0
 numa = 0
