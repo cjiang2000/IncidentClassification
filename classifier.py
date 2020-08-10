@@ -10,7 +10,7 @@ path = easygui.fileopenbox()
 services = pd.read_excel("SystemList.xlsx", usecols = "N,O,P,Q,R,S,T,U,V,W")
 data = pd.read_excel(path, sheet_name = 'Combined', usecols = "X,C,T,H,R,Y,AE")
 pasa = pd.read_excel(path,sheet_name = 'Combined', usecols = "AP")
-incid = pd.read_excel(path,sheet_name = 'Combined', usecols = "E,BN")
+incid = pd.read_excel(path,sheet_name = 'Combined', usecols = "E,BN,BO")
 
 mef = []
 dic_mef = {}
@@ -22,6 +22,7 @@ end = []
 dic_e = {}
 special = []
 dic_s = {}
+msbm = ["Applications", "SECURITY", "Mainframe", "Data / Database", "Server Infrastructure", "Service Desk"]
 for index, row in services.iterrows():
 	if not pd.isnull(row["Before"]):
 		bef.append(row["Before"])
@@ -56,7 +57,7 @@ for index, row in data.iterrows():
 			for y in range(len(tokens)):
 				if tokens[y] in mef:
 					if index not in duplicates:
-						if pasa.at[index,'Mapped System'] == "Applications" or pasa.at[index,'Mapped System'] == "SECURITY":
+						if pasa.at[index,'Mapped System'] in msbm:
 							yesno[index] = ['n/a', 'n/a']
 						else:
 							yesno[index] = ['n', 'n']
@@ -79,7 +80,7 @@ for index, row in data.iterrows():
 			for y in range(len(tokens)):
 				if tokens[y] in bef:
 					if index not in duplicates:
-						if pasa.at[index,'Mapped System'] == "Applications" or pasa.at[index,'Mapped System'] == "SECURITY":
+						if pasa.at[index,'Mapped System'] in msbm:
 							yesno[index] = ['n/a', 'n/a']
 						else:
 							yesno[index] = ['n', 'n']
@@ -103,7 +104,7 @@ for index, row in data.iterrows():
 				for y in range(len(tokens)):
 					if tokens[y] in mid:
 						if index not in duplicates:
-							if pasa.at[index,'Mapped System'] == "Applications" or pasa.at[index,'Mapped System'] == "SECURITY":
+							if pasa.at[index,'Mapped System'] in msbm:
 								yesno[index] = ['n/a', 'n/a']
 							else:
 								yesno[index] = ['n', 'n']
@@ -127,18 +128,8 @@ for index, row in data.iterrows():
 				tokens = nltk.word_tokenize(row[x].replace('-', ' '))
 				for y in range(len(tokens)):
 					if tokens[y] in end:
-		#				if index not in dic:
-		#					if pasa.at[index,'Mapped System'] == "Applications":
-		#						count = count + 1
-		#					dic[index] = (x,dic_e[tokens[y]])
-		#					cols[x] = cols[x] + 1
-		#					if dic_e[tokens[y]] == pasa.at[index, 'Mapped System']:
-		#						counto[index] = 1
-		#				elif dic_e[tokens[y]] == dic[index][1]:
-		#					dic[index] = (x,dic_e[tokens[y]])
-		#				else:
 						if index not in duplicates:
-							if pasa.at[index,'Mapped System'] == "Applications" or pasa.at[index,'Mapped System'] == "SECURITY":
+							if pasa.at[index,'Mapped System'] in msbm:
 								yesno[index] = ['n/a', 'n/a']
 							else:
 								yesno[index] = ['n', 'n']
@@ -155,6 +146,28 @@ for index, row in data.iterrows():
 							counto[index] = 1
 
 
+for index, row in data.iterrows():
+	if index not in dic:
+		for x in range(len(row)):
+			if not pd.isnull(row[x]) and isinstance(row[x], str):
+				for y in range(len(special)):
+					if special[y] in row[x]:
+						if index not in duplicates:
+							if pasa.at[index,'Mapped System'] in msbm:
+								yesno[index] = ['n/a', 'n/a']
+							else:
+								yesno[index] = ['n', 'n']
+							duplicates[index] = [(0,pasa.at[index,'Mapped System'])]
+						if pasa.at[index,'Mapped System'] == dic_s[special[y]]:
+							yesno[index][1] = 'y'
+						temp = ""
+						for i in range(80):
+							if y - 40 + i >= 0 and y - 40 + i < len(row[x]):
+								temp = temp + row[x][y-40+i]
+						duplicates[index].append((sorto[listo[x]], dic_s[special[y]] + " "+ "{" + special[y] + "}" + " " + listo[x] + ":: " + temp, dic_s[special[y]]))
+						if dic_s[special[y]] == pasa.at[index, 'Mapped System']:
+							counto[index] = 1
+
 res = dict(zip(listo, cols))
 for x in duplicates.keys():
 	duplicates[x] = sorted(duplicates[x], key = lambda k: k[0])
@@ -170,7 +183,7 @@ num = 0
 numo = 0
 numa = 0
 for x in duplicates.keys():
-	temp.append([incid.at[x,'Incident ID'], incid.at[x,'Filter'],yesno[x][0], yesno[x][1]] + duplicates[x])
+	temp.append([incid.at[x,'Incident ID'], incid.at[x,'Filter'], incid.at[x,'Has SRT'], yesno[x][0], yesno[x][1]] + duplicates[x])
 	if yesno[x][0] == 'y':
 		num = num + 1
 	if yesno[x][0] == 'n' and yesno[x][1] == 'y':
