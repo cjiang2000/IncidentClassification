@@ -48,8 +48,6 @@ for index, row in services.iterrows():
 		dic_mef[row["mef"].upper()] = row["Match_mef"]
 
 ##Analyzing the data
-count = 0
-counto = [0] * data.shape[0]
 #List of column names
 listo = list(data.columns)
 #Dictionary to prioritize columns
@@ -79,8 +77,6 @@ for index, row in data.iterrows():
 						if y - 5 + i >= 0 and y - 5 + i < len(tokens):
 							temp = temp + " " + tokens[y-5+i]
 					duplicates[index].append((sorto[listo[x]], dic_mef[tokens[y]] + " " + "{" + g + "}" + " " + listo[x] + ":: " + temp, dic_mef[tokens[y]]))
-					if dic_mef[tokens[y]] == pasa.at[index, 'Mapped System']:
-						counto[index] = 1
 
 #Analyze Bef
 for index, row in data.iterrows():
@@ -102,8 +98,6 @@ for index, row in data.iterrows():
 						if y - 5 + i >= 0 and y - 5 + i < len(tokens):
 							temp = temp + " " + tokens[y-5+i]
 					duplicates[index].append((sorto[listo[x]], dic_b[tokens[y]] + " " + "{" + g + "}" + " " + listo[x] + ":: " + temp, dic_b[tokens[y]]))
-					if dic_b[tokens[y]] == pasa.at[index, 'Mapped System']:
-						counto[index] = 1
 
 #Analyze Mid
 for index, row in data.iterrows():
@@ -134,8 +128,6 @@ for index, row in data.iterrows():
 							if y - 5 + i >= 0 and y - 5 + i < len(tokens):
 								temp = temp + " " + tokens[y-5+i]
 						duplicates[index].append((sorto[listo[x]], dic_m[tokens[y]] + " " + "{" + g + "}" + " " + listo[x] + ":: " + temp, dic_m[tokens[y]]))
-						if dic_m[tokens[y]] == pasa.at[index, 'Mapped System']:
-							counto[index] = 1
 
 #Analyze End
 for index, row in data.iterrows():
@@ -166,8 +158,7 @@ for index, row in data.iterrows():
 							duplicates[index].append((100, dic_e[tokens[y]] + " "+ "{" + g + "}" + " " + listo[x] + ":: " + temp, dic_e[tokens[y]]))
 						else:
 							duplicates[index].append((sorto[listo[x]], dic_e[tokens[y]] + " "+ "{" + g + "}" + " " + listo[x] + ":: " + temp, dic_e[tokens[y]]))
-						if dic_e[tokens[y]] == pasa.at[index, 'Mapped System']:
-							counto[index] = 1
+
 
 #Analyze Special. Instead of looking at each token in each index/column. We look at each token from our special list of tokens and search for them within the substrings of each index/column. This allows us to find matches for tokens that include spaces.
 for index, row in data.iterrows():
@@ -187,8 +178,6 @@ for index, row in data.iterrows():
 						if z - 40 + i >= 0 and z - 40 + i < len(row[x]):
 							temp = temp + row[x][z-40+i]
 					duplicates[index].append((sorto[listo[x]], dic_s[special[y]] + " "+ "{" + special[y] + "}" + " " + listo[x] + ":: " + temp, dic_s[special[y]]))
-					if dic_s[special[y]] == pasa.at[index, 'Mapped System']:
-						counto[index] = 1
 	#For when no tokens are found
 	if index not in duplicates:
 		if pasa.at[index,'Mapped System'] in msbm:
@@ -219,6 +208,11 @@ for x in duplicates.keys():
 			yesno[x][1] = 'y'
 	duplicates2[x] = [lis[1] for lis in duplicates[x]] 
 
+falsepos = {}
+trueno = len(yesno)
+for x in yesno:
+	if yesno[x][0] == 'n/a':
+		trueno = trueno - 1
 #Sort by system
 systemsort = {}
 for x in duplicates.keys():
@@ -226,19 +220,31 @@ for x in duplicates.keys():
 		systemsort[duplicates[x][0][1]] = [x]
 	else:
 		systemsort[duplicates[x][0][1]].append(x)
+	if duplicates[x][1][2] not in falsepos:
+		if duplicates[x][1][2] != duplicates[x][0][1]:
+			falsepos[duplicates[x][1][2]] = 1
+	else:
+		if duplicates[x][1][2] != duplicates[x][0][1]:
+			falsepos[duplicates[x][1][2]] = falsepos[duplicates[x][1][2]] + 1
+
 
 for x in systemsort.keys():
 	truepos = 0
-	trueneg = 0
+	falseneg = 0
 	for y in systemsort[x]:
 		if yesno[y][0] == 'y':
 			truepos = truepos + 1
 		elif yesno[y][0] == 'n':
-			trueneg = trueneg + 1
-	systemsort[x] = [x, truepos, trueneg, trueneg, 0]
-tempo = [["System Name", "True Pos", "True Neg", "False Pos", "False Neg"]]
-for x in systemsort.keys():
-	tempo.append(systemsort[x])
+			falseneg = falseneg + 1
+	if x in falsepos:
+		trueneg = trueno - truepos - falseneg - falsepos[x]
+		systemsort[x] = [x, truepos, falseneg, falsepos[x], trueneg]
+	else:
+		systemsort[x] = [x, truepos, falseneg, 0, trueno - truepos - falseneg]
+systemsort = sorted(systemsort.items(), key = lambda k: 0 if (k[1][1] == 0) else (k[1][1]/(k[1][1] + k[1][3])), reverse = True)
+tempo = [["System Name", "True Pos", "False Neg", "False Pos", "True Neg"]]
+for x in systemsort:
+	tempo.append(x[1])
 systemsort = pd.DataFrame(tempo)
 #list that we're outputting to excel
 temp = [["Incident ID", "Filter", "Has SRT", "On PSL?", "Match Found", "Duplicate Match Found", "Mapped System", "Found System", "Duplicates"]]
