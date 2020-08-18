@@ -15,7 +15,7 @@ data = pd.read_excel(path, sheet_name = 'Combined', usecols = "X,C,T,H,R,Y,AE")
 #Mapped System
 pasa = pd.read_excel(path,sheet_name = 'Combined', usecols = "AP")
 #Incident ID, Filter, and Has SRT
-incid = pd.read_excel(path,sheet_name = 'Combined', usecols = "E,BN,BO")
+incid = pd.read_excel(path,sheet_name = 'Combined', usecols = "E,BN,BO,BS")
 #Array and dictionary for each category of data (mef, before, middle, end, and special)
 mef = []
 dic_mef = {}
@@ -28,7 +28,7 @@ dic_e = {}
 special = []
 dic_s = {}
 #Array of mapped systems we ignore
-msbm = ["Applications", "SECURITY", "Mainframe", "Data / Database", "Server Infrastructure", "Service Desk"]
+msbm = ["Applications", 0, "Mainframe", "Data / Database", "Server Infrastructure", "Service Desk"]
 #For loop that reads all the data from the dataframes into the dictionaries and arrays created earlier
 for index, row in services.iterrows():
 	if not pd.isnull(row["Before"]) and row["Before"] != "nan":
@@ -189,10 +189,20 @@ for index, row in data.iterrows():
 					duplicates[index].append((sorto[listo[x]], dic_s[special[y]] + " "+ "{" + special[y] + "}" + " " + listo[x] + ":: " + temp, dic_s[special[y]]))
 					if dic_s[special[y]] == pasa.at[index, 'Mapped System']:
 						counto[index] = 1
+	#For when no tokens are found
+	if index not in duplicates:
+		if pasa.at[index,'Mapped System'] in msbm:
+			yesno[index] = ['n/a', 'n/a']
+		else:
+			yesno[index] = ['n', 'n']
+		duplicates[index] = [(0, pasa.at[index, 'Mapped System'])]
+		duplicates[index].append((1, "", ""))
 
 #List of systems we value least
-lastpick = ["E2E-BSM", "Network", "Security", "COTS"]
+lastpick = ["E2E-BSM", "Network", "SECURITY", "COTS"]
 
+#Copy of duplicates
+duplicates2 = {}
 #Reorders certain matches based on lastpick
 for x in duplicates.keys():
 	duplicates[x] = sorted(duplicates[x], key = lambda k: k[0])
@@ -207,10 +217,31 @@ for x in duplicates.keys():
 	for y in range(len(duplicates[x]) - 2):
 		if duplicates[x][0][1] == duplicates[x][y+2][2]:
 			yesno[x][1] = 'y'
-	duplicates[x] = [lis[1] for lis in duplicates[x]] 
+	duplicates2[x] = [lis[1] for lis in duplicates[x]] 
 
+#Sort by system
+systemsort = {}
+for x in duplicates.keys():
+	if duplicates[x][0][1] not in systemsort:
+		systemsort[duplicates[x][0][1]] = [x]
+	else:
+		systemsort[duplicates[x][0][1]].append(x)
+
+for x in systemsort.keys():
+	truepos = 0
+	trueneg = 0
+	for y in systemsort[x]:
+		if yesno[y][0] == 'y':
+			truepos = truepos + 1
+		elif yesno[y][0] == 'n':
+			trueneg = trueneg + 1
+	systemsort[x] = [x, truepos, trueneg, trueneg, 0]
+tempo = [["System Name", "True Pos", "True Neg", "False Pos", "False Neg"]]
+for x in systemsort.keys():
+	tempo.append(systemsort[x])
+systemsort = pd.DataFrame(tempo)
 #list that we're outputting to excel
-temp = [["Incident ID", "Filter", "Has SRT", "Match Found", "Duplicate Match Found", "Mapped System", "Found System", "Duplicates"]]
+temp = [["Incident ID", "Filter", "Has SRT", "On PSL?", "Match Found", "Duplicate Match Found", "Mapped System", "Found System", "Duplicates"]]
 #correct matches
 num = 0
 #wrong matches with correct match found but not picked
@@ -218,19 +249,20 @@ numo = 0
 #wrong match where the correct match was never found
 numa = 0
 #Creates output
-for x in duplicates.keys():
-	temp.append([incid.at[x,'Incident ID'], incid.at[x,'Filter'], incid.at[x,'Has SRT'], yesno[x][0], yesno[x][1]] + duplicates[x])
+for x in duplicates2.keys():
+	temp.append([incid.at[x,'Incident ID'], incid.at[x,'Filter'], incid.at[x,'Has SRT'], incid.at[x, 'On PSL?'], yesno[x][0], yesno[x][1]] + duplicates2[x])
 	if yesno[x][0] == 'y':
 		num = num + 1
 	if yesno[x][0] == 'n' and yesno[x][1] == 'y':
 		numo = numo + 1
 	if yesno[x][0] == 'n' and yesno[x][1] == 'n':
 		numa = numa + 1
-duplicates = pd.DataFrame(temp)
+duplicates2 = pd.DataFrame(temp)
 #print data
 print(num)
 print(numo)
 print(numa)
 #output to Excel
 with pd.ExcelWriter('output.xlsx') as writer:  
-	duplicates.to_excel(writer, sheet_name = 'Dups',index = False)
+	duplicates2.to_excel(writer, sheet_name = 'Output',index = False)
+	systemsort.to_excel(writer, sheet_name = 'By System', index = False)
