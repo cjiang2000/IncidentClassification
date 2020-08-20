@@ -71,7 +71,7 @@ for index, row in data.iterrows():
 							yesno[index] = ['n/a', 'n/a']
 						else:
 							yesno[index] = ['n', 'n']
-						duplicates[index] = [(0,pasa.at[index,'Mapped System'])]
+						duplicates[index] = [(0,pasa.at[index,'Mapped System'], "")]
 					temp = ""
 					for i in range(10):
 						if y - 5 + i >= 0 and y - 5 + i < len(tokens):
@@ -92,7 +92,7 @@ for index, row in data.iterrows():
 							yesno[index] = ['n/a', 'n/a']
 						else:
 							yesno[index] = ['n', 'n']
-						duplicates[index] = [(0,pasa.at[index,'Mapped System'])]
+						duplicates[index] = [(0,pasa.at[index,'Mapped System'], "")]
 					temp = ""
 					for i in range(10):
 						if y - 5 + i >= 0 and y - 5 + i < len(tokens):
@@ -122,7 +122,7 @@ for index, row in data.iterrows():
 								yesno[index] = ['n/a', 'n/a']
 							else:
 								yesno[index] = ['n', 'n']
-							duplicates[index] = [(0,pasa.at[index,'Mapped System'])]
+							duplicates[index] = [(0,pasa.at[index,'Mapped System'], "")]
 						temp = ""
 						for i in range(10):
 							if y - 5 + i >= 0 and y - 5 + i < len(tokens):
@@ -149,7 +149,7 @@ for index, row in data.iterrows():
 								yesno[index] = ['n/a', 'n/a']
 							else:
 								yesno[index] = ['n', 'n']
-							duplicates[index] = [(0,pasa.at[index,'Mapped System'])]
+							duplicates[index] = [(0,pasa.at[index,'Mapped System'], "")]
 						temp = ""
 						for i in range(10):
 							if y - 5 + i >= 0 and y - 5 + i < len(tokens):
@@ -172,7 +172,7 @@ for index, row in data.iterrows():
 							yesno[index] = ['n/a', 'n/a']
 						else:
 							yesno[index] = ['n', 'n']
-						duplicates[index] = [(0,pasa.at[index,'Mapped System'])]
+						duplicates[index] = [(0,pasa.at[index,'Mapped System'], "")]
 					temp = ""
 					for i in range(80):
 						if z - 40 + i >= 0 and z - 40 + i < len(row[x]):
@@ -184,7 +184,7 @@ for index, row in data.iterrows():
 			yesno[index] = ['n/a', 'n/a']
 		else:
 			yesno[index] = ['n', 'n']
-		duplicates[index] = [(0, pasa.at[index, 'Mapped System'])]
+		duplicates[index] = [(0, pasa.at[index, 'Mapped System'], "")]
 		duplicates[index].append((1, "", ""))
 
 #List of systems we value least
@@ -196,9 +196,20 @@ counter = 0
 #Reorders certain matches based on lastpick
 for x in duplicates.keys():
 	duplicates[x] = sorted(duplicates[x], key = lambda k: k[0])
+	third = [item[2] for item in duplicates[x]]
+	if "CADE 2" in third and "IMF/CADE2 DP" in third:
+		temp = duplicates[x][1]
+		duplicates[x][1] = duplicates[x][third.index("IMF/CADE2 DP")]
+		duplicates[x][third.index("IMF/CADE2 DP")] = temp
 	if duplicates[x][1][2] in lastpick:
 		for y in range(2,len(duplicates[x])):
 			if duplicates[x][y][2] not in lastpick:
+				temp = duplicates[x][1]
+				duplicates[x][1] = duplicates[x][y]
+				duplicates[x][y] = temp
+	if "Network" in third:
+		for y in range(2, len(duplicates[x])):
+			if duplicates[x][y][2] == "Network" and duplicates[x][y][0] == 3:
 				temp = duplicates[x][1]
 				duplicates[x][1] = duplicates[x][y]
 				duplicates[x][y] = temp
