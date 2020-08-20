@@ -192,6 +192,7 @@ lastpick = ["E2E-BSM", "Network", "SECURITY", "COTS"]
 
 #Copy of duplicates
 duplicates2 = {}
+counter = 0
 #Reorders certain matches based on lastpick
 for x in duplicates.keys():
 	duplicates[x] = sorted(duplicates[x], key = lambda k: k[0])
@@ -203,6 +204,12 @@ for x in duplicates.keys():
 				duplicates[x][y] = temp
 	if duplicates[x][0][1] == duplicates[x][1][2]:
 		yesno[x][0] = 'y'
+		y = 2
+		while y < (len(duplicates[x])):
+			if duplicates[x][y][2] != duplicates[x][0][1]:
+				counter = counter + 1
+				y = len(duplicates[x])
+			y = y + 1
 	for y in range(len(duplicates[x]) - 2):
 		if duplicates[x][0][1] == duplicates[x][y+2][2]:
 			yesno[x][1] = 'y'
@@ -216,14 +223,14 @@ for x in yesno:
 #Sort by system
 systemsort = {}
 for x in duplicates.keys():
-	if duplicates[x][0][1] not in systemsort:
+	if duplicates[x][0][1] not in systemsort and duplicates[x][0][1] not in msbm:
 		systemsort[duplicates[x][0][1]] = [x]
-	else:
+	elif duplicates[x][0][1] not in msbm:
 		systemsort[duplicates[x][0][1]].append(x)
-	if duplicates[x][1][2] not in falsepos:
+	if duplicates[x][1][2] not in falsepos and duplicates[x][0][1] not in msbm:
 		if duplicates[x][1][2] != duplicates[x][0][1]:
 			falsepos[duplicates[x][1][2]] = 1
-	else:
+	elif duplicates[x][0][1] not in msbm:
 		if duplicates[x][1][2] != duplicates[x][0][1]:
 			falsepos[duplicates[x][1][2]] = falsepos[duplicates[x][1][2]] + 1
 
@@ -238,11 +245,33 @@ for x in systemsort.keys():
 			falseneg = falseneg + 1
 	if x in falsepos:
 		trueneg = trueno - truepos - falseneg - falsepos[x]
-		systemsort[x] = [x, truepos, falseneg, falsepos[x], trueneg]
+		if truepos != 0:
+			precision = truepos/(truepos + falsepos[x])
+			recall = truepos/(truepos+falseneg)
+			accuracy = (truepos + trueneg)/(trueno)
+			fmeasure = 2*precision*recall/(precision + recall)
+		else:
+			precision = 0
+			recall = 0
+			accuracy = trueneg/trueno
+			fmeasure = 0
+		systemsort[x] = [x, truepos, falseneg, falsepos[x], trueneg, precision, recall, accuracy, fmeasure]
 	else:
-		systemsort[x] = [x, truepos, falseneg, 0, trueno - truepos - falseneg]
-systemsort = sorted(systemsort.items(), key = lambda k: 0 if (k[1][1] == 0) else (k[1][1]/(k[1][1] + k[1][3])), reverse = True)
-tempo = [["System Name", "True Pos", "False Neg", "False Pos", "True Neg"]]
+		trueneg = trueno - truepos - falseneg
+		if truepos != 0:
+			precision = truepos/(truepos)
+			recall = truepos/(truepos+falseneg)
+			accuracy = (truepos + trueneg)/(trueno)
+			fmeasure = 2*precision*recall/(precision + recall)
+		else:
+			precision = 0
+			recall = 0
+			accuracy = trueneg/trueno
+			fmeasure = 0
+		systemsort[x] = [x, truepos, falseneg, 0, trueneg, precision, recall, accuracy, fmeasure]
+
+systemsort = sorted(systemsort.items(), key = lambda k: k[1][5], reverse = True)
+tempo = [["System Name", "True Pos", "False Neg", "False Pos", "True Neg", "Precision", "Recall", "Accuracy", "F-Measure"]]
 for x in systemsort:
 	tempo.append(x[1])
 systemsort = pd.DataFrame(tempo)
@@ -268,6 +297,7 @@ duplicates2 = pd.DataFrame(temp)
 print(num)
 print(numo)
 print(numa)
+print(counter)
 #output to Excel
 with pd.ExcelWriter('output.xlsx') as writer:  
 	duplicates2.to_excel(writer, sheet_name = 'Output',index = False)
